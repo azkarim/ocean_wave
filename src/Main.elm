@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Browser.Dom
@@ -15,6 +15,17 @@ import Task
 import Time
 
 
+
+-- PORTS
+
+
+port saveHighestLevel : Float -> Cmd msg
+
+
+
+-- MODEL
+
+
 type alias Model =
     { waterHeight : Float
     , time : Float
@@ -25,6 +36,12 @@ type alias Model =
     , upStreak : Int
     , streakAnimTimer : Float
     , streakCounters : Dict Int Int
+    , highestLevel : Float
+    }
+
+
+type alias Flags =
+    { highestLevel : Float
     }
 
 
@@ -49,7 +66,7 @@ type Msg
     | KeyPressed String
 
 
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     Browser.element
         { init = init
@@ -59,8 +76,8 @@ main =
         }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : Flags -> ( Model, Cmd Msg )
+init flags =
     ( { waterHeight = 20
       , time = 0
       , state = Playing
@@ -70,6 +87,7 @@ init _ =
       , upStreak = 0
       , streakAnimTimer = 0
       , streakCounters = initStreakCounters
+      , highestLevel = flags.highestLevel
       }
     , Task.perform GotViewport Browser.Dom.getViewport
     )
@@ -80,6 +98,10 @@ initStreakCounters =
     List.range 3 10
         |> List.map (\n -> ( n, 0 ))
         |> Dict.fromList
+
+
+
+-- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
@@ -111,6 +133,10 @@ subscriptions model =
                 [ resizeSub
                 , keySub
                 ]
+
+
+
+-- UPDATE
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -168,6 +194,13 @@ update msg model =
                     newHeight =
                         model.waterHeight + dh
 
+                    ( newHighest, highestCmd ) =
+                        if newHeight > model.highestLevel then
+                            ( newHeight, saveHighestLevel newHeight )
+
+                        else
+                            ( model.highestLevel, Cmd.none )
+
                     newState =
                         if newHeight <= 0 then
                             GameOver
@@ -182,8 +215,9 @@ update msg model =
                     , upStreak = newStreak
                     , streakAnimTimer = newAnimTimer
                     , streakCounters = newStreakCounters
+                    , highestLevel = newHighest
                   }
-                , Cmd.none
+                , highestCmd
                 )
 
             else
@@ -222,6 +256,10 @@ update msg model =
 
             else
                 ( model, Cmd.none )
+
+
+
+-- VIEW
 
 
 view : Model -> Html Msg
@@ -286,6 +324,12 @@ view model =
                 , style "pointer-events" "none"
                 ]
                 [ h1 [ style "margin" "0 0 10px 0", style "color" "#006064" ] [ text "Ocean Waves" ]
+
+                -- Highest Level Indicator
+                , div [ style "color" "#00838f", style "font-size" "14px", style "font-weight" "bold" ]
+                    [ text ("Highest Reached: " ++ String.fromFloat model.highestLevel ++ "px") ]
+
+                -- Main Height Circle
                 , div
                     [ style "display" "inline-flex"
                     , style "flex-direction" "column"

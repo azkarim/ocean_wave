@@ -20,9 +20,27 @@
 
         <script src="elm.js"></script>
         <script>
-            Elm.Main.init({
+            // Retrieve high score from localStorage
+            const storageKey = "ocean-waves-high-score";
+            const savedScore = localStorage.getItem(storageKey);
+
+            // Prepare flags for Elm
+            const flags = {
+                highestLevel: savedScore ? parseFloat(savedScore) : 20.0,
+            };
+
+            // Initialize the Elm app
+            const app = Elm.Main.init({
                 node: document.getElementById("app"),
+                flags: flags,
             });
+
+            // Listen for the saveHighestLevel port
+            if (app.ports && app.ports.saveHighestLevel) {
+                app.ports.saveHighestLevel.subscribe(function (score) {
+                    localStorage.setItem(storageKey, score);
+                });
+            }
         </script>
     </body>
 </html>
