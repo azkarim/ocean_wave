@@ -2,10 +2,11 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom
-import Browser.Events exposing (onAnimationFrameDelta)
+import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onResize)
 import Html exposing (Html, button, div, h1, p, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
+import Json.Decode as Decode
 import Random
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, fill, height, viewBox, width)
@@ -25,6 +26,7 @@ type alias Model =
 
 type GameState
     = Playing
+    | Paused
     | GameOver
 
 
@@ -40,6 +42,7 @@ type Msg
     | Restart
     | GotViewport Browser.Dom.Viewport
     | WindowResized Int Int
+    | KeyPressed String
 
 
 main : Program () Model Msg
@@ -69,7 +72,10 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     let
         resizeSub =
-            Browser.Events.onResize WindowResized
+            onResize WindowResized
+
+        keySub =
+            onKeyDown (Decode.map KeyPressed (Decode.field "key" Decode.string))
     in
     case model.state of
         Playing ->
@@ -77,10 +83,20 @@ subscriptions model =
                 [ onAnimationFrameDelta Tick
                 , Time.every 2000 EventTick
                 , resizeSub
+                , keySub
+                ]
+
+        Paused ->
+            Sub.batch
+                [ resizeSub
+                , keySub
                 ]
 
         GameOver ->
-            resizeSub
+            Sub.batch
+                [ resizeSub
+                , keySub
+                ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -135,6 +151,21 @@ update msg model =
         WindowResized w h ->
             ( { model | windowWidth = w, windowHeight = h }, Cmd.none )
 
+        KeyPressed key ->
+            if key == " " then
+                case model.state of
+                    Playing ->
+                        ( { model | state = Paused, eventMessage = "GAME PAUSED" }, Cmd.none )
+
+                    Paused ->
+                        ( { model | state = Playing, eventMessage = "Resuming..." }, Cmd.none )
+
+                    GameOver ->
+                        ( model, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
 
 view : Model -> Html Msg
 view model =
@@ -169,26 +200,33 @@ view model =
                     [ text ("Height: " ++ String.fromFloat model.waterHeight ++ "px") ]
                 , p [ style "margin" "5px 0", style "color" "#d32f2f", style "font-weight" "bold" ]
                     [ text model.eventMessage ]
-                , if model.state == GameOver then
-                    div [ style "margin-top" "30px" ]
-                        [ h1 [ style "color" "#c62828", style "font-size" "36px" ] [ text "GAME OVER" ]
-                        , button
-                            [ onClick Restart
-                            , style "margin-top" "10px"
-                            , style "padding" "10px 20px"
-                            , style "font-size" "16px"
-                            , style "cursor" "pointer"
-                            , style "background-color" "#00838f"
-                            , style "color" "white"
-                            , style "border" "none"
-                            , style "border-radius" "4px"
-                            , style "font-weight" "bold"
+                , case model.state of
+                    GameOver ->
+                        div [ style "margin-top" "30px" ]
+                            [ h1 [ style "color" "#c62828", style "font-size" "36px" ] [ text "GAME OVER" ]
+                            , button
+                                [ onClick Restart
+                                , style "margin-top" "10px"
+                                , style "padding" "10px 20px"
+                                , style "font-size" "16px"
+                                , style "cursor" "pointer"
+                                , style "background-color" "#00838f"
+                                , style "color" "white"
+                                , style "border" "none"
+                                , style "border-radius" "4px"
+                                , style "font-weight" "bold"
+                                ]
+                                [ text "Play Again" ]
                             ]
-                            [ text "Play Again" ]
-                        ]
 
-                  else
-                    text ""
+                    Paused ->
+                        div [ style "margin-top" "30px" ]
+                            [ h1 [ style "color" "#00838f", style "font-size" "36px" ] [ text "PAUSED" ]
+                            , p [ style "color" "#006064" ] [ text "Press Space to Resume" ]
+                            ]
+
+                    Playing ->
+                        p [ style "color" "#006064", style "font-size" "12px", style "margin-top" "20px" ] [ text "Press Space to Pause" ]
                 ]
 
             -- Water SVG
