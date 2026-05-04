@@ -286,8 +286,24 @@ view model =
                 , style "pointer-events" "none"
                 ]
                 [ h1 [ style "margin" "0 0 10px 0", style "color" "#006064" ] [ text "Ocean Waves" ]
-                , p [ style "margin" "5px 0", style "font-size" "18px", style "font-weight" "bold", style "color" "#00838f" ]
-                    [ text ("Height: " ++ String.fromFloat model.waterHeight ++ "px") ]
+                , div
+                    [ style "display" "inline-flex"
+                    , style "flex-direction" "column"
+                    , style "align-items" "center"
+                    , style "justify-content" "center"
+                    , style "width" "120px"
+                    , style "height" "120px"
+                    , style "border" "6px solid #00838f"
+                    , style "border-radius" "50%"
+                    , style "margin" "15px auto"
+                    , style "background-color" "rgba(255, 255, 255, 0.8)"
+                    , style "box-shadow" "0 4px 15px rgba(0,0,0,0.1)"
+                    ]
+                    [ span [ style "font-size" "42px", style "font-weight" "900", style "color" "#00838f" ]
+                        [ text (String.fromFloat model.waterHeight) ]
+                    , span [ style "font-size" "14px", style "font-weight" "bold", style "color" "#006064", style "margin-top" "-5px" ]
+                        [ text "px" ]
+                    ]
                 , p [ style "margin" "5px 0", style "color" "#d32f2f", style "font-weight" "bold" ]
                     [ text model.eventMessage ]
                 , case model.state of
