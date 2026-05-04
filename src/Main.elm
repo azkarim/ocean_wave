@@ -3,7 +3,8 @@ module Main exposing (main)
 import Browser
 import Browser.Dom
 import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onResize)
-import Html exposing (Html, button, div, h1, p, text)
+import Dict exposing (Dict)
+import Html exposing (Html, button, div, h1, p, span, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
@@ -23,6 +24,7 @@ type alias Model =
     , windowHeight : Int
     , upStreak : Int
     , streakAnimTimer : Float
+    , streakCounters : Dict Int Int
     }
 
 
@@ -67,9 +69,17 @@ init _ =
       , windowHeight = 600
       , upStreak = 0
       , streakAnimTimer = 0
+      , streakCounters = initStreakCounters
       }
     , Task.perform GotViewport Browser.Dom.getViewport
     )
+
+
+initStreakCounters : Dict Int Int
+initStreakCounters =
+    List.range 3 10
+        |> List.map (\n -> ( n, 0 ))
+        |> Dict.fromList
 
 
 subscriptions : Model -> Sub Msg
@@ -141,6 +151,13 @@ update msg model =
                             Down ->
                                 0
 
+                    newStreakCounters =
+                        if newStreak >= 3 && newStreak <= 10 then
+                            Dict.update newStreak (Maybe.map (\c -> c + 1)) model.streakCounters
+
+                        else
+                            model.streakCounters
+
                     newAnimTimer =
                         if newStreak >= 3 then
                             2.0
@@ -164,6 +181,7 @@ update msg model =
                     , eventMessage = msgStr
                     , upStreak = newStreak
                     , streakAnimTimer = newAnimTimer
+                    , streakCounters = newStreakCounters
                   }
                 , Cmd.none
                 )
@@ -172,7 +190,17 @@ update msg model =
                 ( model, Cmd.none )
 
         Restart ->
-            ( { model | waterHeight = 20, time = 0, state = Playing, eventMessage = "Waiting for waves...", upStreak = 0, streakAnimTimer = 0 }, Cmd.none )
+            ( { model
+                | waterHeight = 20
+                , time = 0
+                , state = Playing
+                , eventMessage = "Waiting for waves..."
+                , upStreak = 0
+                , streakAnimTimer = 0
+                , streakCounters = initStreakCounters
+              }
+            , Cmd.none
+            )
 
         GotViewport vp ->
             ( { model | windowWidth = round vp.viewport.width, windowHeight = round vp.viewport.height }, Cmd.none )
@@ -244,6 +272,9 @@ view model =
               else
                 text ""
 
+            -- Badge Display (Top Left)
+            , viewBadges model
+
             -- UI Overlay
             , div
                 [ style "position" "absolute"
@@ -252,6 +283,7 @@ view model =
                 , style "width" "100%"
                 , style "text-align" "center"
                 , style "z-index" "10"
+                , style "pointer-events" "none"
                 ]
                 [ h1 [ style "margin" "0 0 10px 0", style "color" "#006064" ] [ text "Ocean Waves" ]
                 , p [ style "margin" "5px 0", style "font-size" "18px", style "font-weight" "bold", style "color" "#00838f" ]
@@ -260,7 +292,7 @@ view model =
                     [ text model.eventMessage ]
                 , case model.state of
                     GameOver ->
-                        div [ style "margin-top" "30px" ]
+                        div [ style "margin-top" "30px", style "pointer-events" "all" ]
                             [ h1 [ style "color" "#c62828", style "font-size" "36px" ] [ text "GAME OVER" ]
                             , p [ style "color" "#c62828" ] [ text "Press Space to Restart" ]
                             , button
@@ -295,6 +327,91 @@ view model =
             , viewRuler model
             ]
         ]
+
+
+viewBadges : Model -> Html Msg
+viewBadges model =
+    div
+        [ style "position" "absolute"
+        , style "top" "20px"
+        , style "left" "20px"
+        , style "z-index" "15"
+        , style "display" "flex"
+        , style "flex-direction" "column"
+        , style "gap" "10px"
+        , style "pointer-events" "none"
+        ]
+        (List.range 3 10
+            |> List.map
+                (\n ->
+                    let
+                        count =
+                            Dict.get n model.streakCounters |> Maybe.withDefault 0
+
+                        isActive =
+                            model.upStreak == n
+                    in
+                    div
+                        [ style "display" "flex"
+                        , style "align-items" "center"
+                        , style "gap" "8px"
+                        , style "opacity"
+                            (if count > 0 || isActive then
+                                "1"
+
+                             else
+                                "0.3"
+                            )
+                        ]
+                        [ div
+                            [ style "width" "30px"
+                            , style "height" "30px"
+                            , style "border-radius" "50%"
+                            , style "display" "flex"
+                            , style "align-items" "center"
+                            , style "justify-content" "center"
+                            , style "font-weight" "bold"
+                            , style "font-size" "14px"
+                            , style "border" "2px solid #fbc02d"
+                            , style "background-color"
+                                (if isActive then
+                                    "#fbc02d"
+
+                                 else if count > 0 then
+                                    "rgba(251, 192, 45, 0.2)"
+
+                                 else
+                                    "transparent"
+                                )
+                            , style "color"
+                                (if isActive then
+                                    "white"
+
+                                 else
+                                    "#fbc02d"
+                                )
+                            , style "box-shadow"
+                                (if isActive then
+                                    "0 0 10px #fbc02d"
+
+                                 else
+                                    "none"
+                                )
+                            , style "transition" "all 0.3s ease"
+                            ]
+                            [ text (String.fromInt n) ]
+                        , span
+                            [ style "font-size" "12px"
+                            , style "color" "#006064"
+                            , style "font-weight" "bold"
+                            , style "background-color" "rgba(255,255,255,0.5)"
+                            , style "padding" "2px 6px"
+                            , style "border-radius" "10px"
+                            ]
+                            [ text ("x" ++ String.fromInt count) ]
+                        ]
+                )
+        )
 
 
 viewWave : Model -> Html Msg
