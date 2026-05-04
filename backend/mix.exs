@@ -7,7 +7,9 @@ defmodule OceanWave.MixProject do
       version: "0.1.0",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      releases: releases(),
+      target: System.get_env("MIX_TARGET") || :host
     ]
   end
 
@@ -20,6 +22,15 @@ defmodule OceanWave.MixProject do
   end
 
   # Run "mix help deps" to learn about dependencies.
+  defp releases do
+    [
+      ocean_wave: [
+        include_executables_for: [:unix],
+        steps: [:assemble, :tar]
+      ]
+    ]
+  end
+
   defp deps do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
