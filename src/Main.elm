@@ -190,7 +190,7 @@ update msg model =
                         ( { model | state = Playing, eventMessage = "Resuming..." }, Cmd.none )
 
                     GameOver ->
-                        ( model, Cmd.none )
+                        update Restart model
 
             else
                 ( model, Cmd.none )
@@ -262,6 +262,7 @@ view model =
                     GameOver ->
                         div [ style "margin-top" "30px" ]
                             [ h1 [ style "color" "#c62828", style "font-size" "36px" ] [ text "GAME OVER" ]
+                            , p [ style "color" "#c62828" ] [ text "Press Space to Restart" ]
                             , button
                                 [ onClick Restart
                                 , style "margin-top" "10px"
