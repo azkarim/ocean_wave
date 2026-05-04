@@ -2,7 +2,7 @@
   "name": "Ocean Waves",
   "short_name": "Waves",
   "description": "An interactive ocean wave game built in Elm.",
-  "start_url": "./index.html",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#222222",
