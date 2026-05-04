@@ -231,6 +231,9 @@ view model =
 
             -- Water SVG
             , viewWave model
+
+            -- Ruler Scale
+            , viewRuler model
             ]
         ]
 
@@ -305,10 +308,91 @@ viewWave model =
         , style "position" "absolute"
         , style "bottom" "0"
         , style "left" "0"
+        , style "pointer-events" "none"
         ]
         [ path
             [ d pathD
             , fill "rgba(28, 163, 236, 0.8)"
             ]
             []
+        ]
+
+
+viewRuler : Model -> Html Msg
+viewRuler model =
+    let
+        rulerWidth =
+            60
+
+        maxTicks =
+            model.windowHeight // 10
+
+        ticks =
+            List.range 0 maxTicks
+
+        renderTick i =
+            let
+                yPos =
+                    model.windowHeight - (i * 10)
+
+                isMajor =
+                    remainderBy 5 i == 0
+
+                tickWidth =
+                    if isMajor then
+                        20
+
+                    else
+                        10
+            in
+            if yPos < 0 then
+                []
+
+            else
+                [ Svg.line
+                    [ Svg.Attributes.x1 (String.fromInt (rulerWidth - tickWidth))
+                    , Svg.Attributes.y1 (String.fromInt yPos)
+                    , Svg.Attributes.x2 (String.fromInt rulerWidth)
+                    , Svg.Attributes.y2 (String.fromInt yPos)
+                    , Svg.Attributes.stroke "#006064"
+                    , Svg.Attributes.strokeWidth
+                        (if isMajor then
+                            "2"
+
+                         else
+                            "1"
+                        )
+                    ]
+                    []
+                , if isMajor then
+                    Svg.text_
+                        [ Svg.Attributes.x (String.fromInt (rulerWidth - 25))
+                        , Svg.Attributes.y (String.fromInt (yPos + 4))
+                        , Svg.Attributes.fill "#006064"
+                        , Svg.Attributes.fontSize "10px"
+                        , Svg.Attributes.textAnchor "end"
+                        , Svg.Attributes.fontWeight "bold"
+                        ]
+                        [ Svg.text (String.fromInt (i * 10)) ]
+
+                  else
+                    Svg.text ""
+                ]
+    in
+    div
+        [ style "position" "absolute"
+        , style "right" "0"
+        , style "top" "0"
+        , style "height" "100%"
+        , style "width" (String.fromInt rulerWidth ++ "px")
+        , style "background-color" "rgba(255, 255, 255, 0.3)"
+        , style "border-left" "1px solid #006064"
+        , style "z-index" "5"
+        ]
+        [ svg
+            [ width "100%"
+            , height "100%"
+            , viewBox ("0 0 " ++ String.fromInt rulerWidth ++ " " ++ String.fromInt model.windowHeight)
+            ]
+            (List.concatMap renderTick ticks)
         ]
