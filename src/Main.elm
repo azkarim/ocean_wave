@@ -21,6 +21,8 @@ type alias Model =
     , eventMessage : String
     , windowWidth : Int
     , windowHeight : Int
+    , upStreak : Int
+    , streakAnimTimer : Float
     }
 
 
@@ -63,6 +65,8 @@ init _ =
       , eventMessage = "Waiting for waves..."
       , windowWidth = 800
       , windowHeight = 600
+      , upStreak = 0
+      , streakAnimTimer = 0
       }
     , Task.perform GotViewport Browser.Dom.getViewport
     )
@@ -103,7 +107,15 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick delta ->
-            ( { model | time = model.time + (delta / 500) }, Cmd.none )
+            let
+                newTimer =
+                    if model.streakAnimTimer > 0 then
+                        max 0 (model.streakAnimTimer - (delta / 1000))
+
+                    else
+                        0
+            in
+            ( { model | time = model.time + (delta / 500), streakAnimTimer = newTimer }, Cmd.none )
 
         EventTick _ ->
             ( model
@@ -121,6 +133,21 @@ update msg model =
                             Down ->
                                 ( -10, "DOWN! Water level decreased." )
 
+                    newStreak =
+                        case event of
+                            Up ->
+                                model.upStreak + 1
+
+                            Down ->
+                                0
+
+                    newAnimTimer =
+                        if newStreak >= 3 then
+                            2.0
+
+                        else
+                            model.streakAnimTimer
+
                     newHeight =
                         model.waterHeight + dh
 
@@ -135,6 +162,8 @@ update msg model =
                     | waterHeight = newHeight
                     , state = newState
                     , eventMessage = msgStr
+                    , upStreak = newStreak
+                    , streakAnimTimer = newAnimTimer
                   }
                 , Cmd.none
                 )
@@ -143,7 +172,7 @@ update msg model =
                 ( model, Cmd.none )
 
         Restart ->
-            ( { model | waterHeight = 20, time = 0, state = Playing, eventMessage = "Waiting for waves..." }, Cmd.none )
+            ( { model | waterHeight = 20, time = 0, state = Playing, eventMessage = "Waiting for waves...", upStreak = 0, streakAnimTimer = 0 }, Cmd.none )
 
         GotViewport vp ->
             ( { model | windowWidth = round vp.viewport.width, windowHeight = round vp.viewport.height }, Cmd.none )
@@ -186,8 +215,37 @@ view model =
             , style "position" "relative"
             , style "overflow" "hidden"
             ]
-            [ -- UI Overlay
-              div
+            [ -- Streak Animation Overlay
+              if model.streakAnimTimer > 0 then
+                div
+                    [ style "position" "absolute"
+                    , style "top" "0"
+                    , style "left" "0"
+                    , style "width" "100%"
+                    , style "height" "100%"
+                    , style "display" "flex"
+                    , style "flex-direction" "column"
+                    , style "align-items" "center"
+                    , style "justify-content" "center"
+                    , style "z-index" "20"
+                    , style "pointer-events" "none"
+                    , style "background-color" ("rgba(255, 215, 0, " ++ String.fromFloat (min 0.3 (model.streakAnimTimer * 0.5)) ++ ")")
+                    ]
+                    [ div
+                        [ style "transform" ("scale(" ++ String.fromFloat (1.0 + sin (model.streakAnimTimer * 10.0) * 0.1) ++ ")")
+                        , style "color" "#fbc02d"
+                        , style "text-shadow" "0 0 20px rgba(255, 255, 255, 0.8)"
+                        ]
+                        [ h1 [ style "font-size" "64px", style "margin" "0" ] [ text "STREAK!" ]
+                        , p [ style "font-size" "24px", style "font-weight" "bold", style "text-align" "center" ] [ text (String.fromInt model.upStreak ++ " UPS IN A ROW!") ]
+                        ]
+                    ]
+
+              else
+                text ""
+
+            -- UI Overlay
+            , div
                 [ style "position" "absolute"
                 , style "top" "20px"
                 , style "left" "0"
